@@ -1,20 +1,28 @@
-import GptService from './gpt-service.js';
 import { Request, Response } from 'express';
+import GptService from './gpt-service.js';
 
-// a user controller is a class that handles the user routes (incoming frontend requests)
 class GptController {
-  private userService: GptService;
+  private gptService: GptService;
 
-  constructor(userService: GptService) {
-    this.userService = userService;
+  constructor(gptService: GptService) {
+    this.gptService = gptService;
   }
+
   getCode = async (req: Request, res: Response) => {
     const { userPrompt } = req.body;
+    if (!userPrompt) {
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
     try {
-      const response = await this.userService.getCode(userPrompt);
-      res.status(201).json(response);
+      const generatedCode = await this.gptService.generateManimCode(userPrompt);
+      await this.gptService.saveManimCodeToDB(generatedCode);
+      const output = await this.gptService.runManimScript(generatedCode);
+
+      res.status(201).json({ message: 'Manim script executed successfully', output });
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      console.error(error.message);
+      res.status(500).json({ error: 'Failed to process request' });
     }
   };
 }
